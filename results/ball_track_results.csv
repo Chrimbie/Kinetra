@@ -1,0 +1,12 @@
+track_group,ball,mean_squared_error,missed_gate_fraction
+Training track,untrained,1.5409139560415783,0.75
+Training track,trained,0.0064454989969085,0.0
+Training track,route-replay,0.0064454989969085,0.0
+New similar tracks (30),untrained,0.8563873031052619,0.6083333333333333
+New similar tracks (30),trained,0.017111626618447,0.0188888888888888
+New similar tracks (30),route-replay,2.192883126572971,0.7894444444444445
+New rough tracks (30),untrained,4.957421474618751,0.8450000000000001
+New rough tracks (30),trained,0.1546135211196682,0.2327777777777777
+New rough tracks (30),route-replay,7.293386840391396,0.8716666666666666
+Similar / reversed push sensor (30),untrained,0.8563873031052619,0.6083333333333333
+Similar / reversed push sensor (30),trained,0.0507922852562796,0.0761111111111111

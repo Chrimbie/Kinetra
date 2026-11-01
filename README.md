@@ -26,7 +26,7 @@ python ball_track_transfer_test.py
 python -m unittest discover -s tests -v
 ```
 
-The experiment writes `ball_track_results.csv` and `ball_track_trajectories.csv` alongside the Python script. Reference outputs from the initial run live in `results/`.
+The experiment writes `ball_track_results.csv` and `ball_track_trajectories.csv` alongside the Python script. Reference outputs from the initial run live in `results/`, including an SVG benchmark chart.
 
 ## Initial benchmark (November 1, 2026)
 
@@ -48,7 +48,7 @@ The tested correction policy transfers substantially better than replaying the e
 
 - `ball_track_transfer_test.py`: standalone reproducible experiment (Python standard library only).
 - `tests/test_kinetra.py`: repeatability, training, and held-out-track regression tests.
-- `results/`: snapshot of benchmark CSVs and visual plot.
+- `results/`: snapshot of benchmark CSVs and visual SVG plot.
 - `docs/NEXT_EXPERIMENTS.md`: proposed controls and follow-up experiments.
 
 ## Status
