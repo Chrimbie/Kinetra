@@ -1,0 +1,19 @@
+controller,condition,target_part,hit_rate
+learned,sigma 0.09,0,1.0
+learned,sigma 0.09,1,1.0
+learned,sigma 0.09,2,1.0
+learned,sigma 0.09,3,1.0
+learned,sigma 0.09,4,1.0
+learned,sigma 0.09,overall,1.0
+learned,sigma 0.05,0,1.0
+learned,sigma 0.05,1,1.0
+learned,sigma 0.05,2,1.0
+learned,sigma 0.05,3,1.0
+learned,sigma 0.05,4,1.0
+learned,sigma 0.05,overall,1.0
+untrained,sigma 0.09,0,0.05
+untrained,sigma 0.09,1,0.3
+untrained,sigma 0.09,2,0.45
+untrained,sigma 0.09,3,0.35
+untrained,sigma 0.09,4,0.05
+untrained,sigma 0.09,overall,0.24

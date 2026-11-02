@@ -1,0 +1,41 @@
+stress_arm,holdout_group,policy,missed_gate_fraction_mean
+clean,similar,full-learned,0.014074074074074074
+clean,similar,contact-learned,0.22574074074074071
+clean,similar,untrained,0.6083333333333333
+clean,rough,full-learned,0.2262962962962963
+clean,rough,contact-learned,0.523888888888889
+clean,rough,untrained,0.8450000000000001
+noise 0.1,similar,full-learned,0.05407407407407408
+noise 0.1,similar,contact-learned,0.27185185185185184
+noise 0.1,rough,full-learned,0.25925925925925924
+noise 0.1,rough,contact-learned,0.5403703703703703
+noise 0.2,similar,full-learned,0.17240740740740743
+noise 0.2,similar,contact-learned,0.33
+noise 0.2,rough,full-learned,0.3516666666666666
+noise 0.2,rough,contact-learned,0.555
+delay +1,similar,full-learned,0.4501851851851852
+delay +1,similar,contact-learned,0.47388888888888886
+delay +1,rough,full-learned,0.6807407407407408
+delay +1,rough,contact-learned,0.6501851851851852
+delay +2,similar,full-learned,0.7455555555555556
+delay +2,similar,contact-learned,0.5575925925925925
+delay +2,rough,full-learned,0.8198148148148148
+delay +2,rough,contact-learned,0.7003703703703703
+gates narrow 0.25,similar,full-learned,0.05648148148148149
+gates narrow 0.25,similar,contact-learned,0.47074074074074074
+gates narrow 0.25,similar,untrained,0.75
+gates narrow 0.25,rough,full-learned,0.3605555555555555
+gates narrow 0.25,rough,contact-learned,0.7129629629629629
+gates narrow 0.25,rough,untrained,0.8966666666666666
+gates wide 0.55,similar,full-learned,0.0037037037037037034
+gates wide 0.55,similar,contact-learned,0.11574074074074074
+gates wide 0.55,similar,untrained,0.515
+gates wide 0.55,rough,full-learned,0.13962962962962963
+gates wide 0.55,rough,contact-learned,0.3768518518518518
+gates wide 0.55,rough,untrained,0.7777777777777778
+push x2 after gate 30,similar,full-learned,0.031111111111111114
+push x2 after gate 30,similar,contact-learned,0.26925925925925925
+push x2 after gate 30,similar,untrained,0.6488888888888888
+push x2 after gate 30,rough,full-learned,0.2838888888888889
+push x2 after gate 30,rough,contact-learned,0.5814814814814815
+push x2 after gate 30,rough,untrained,0.8494444444444444
