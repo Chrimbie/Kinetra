@@ -1,0 +1,95 @@
+{
+ "train_size": 124,
+ "test_size": 54,
+ "majority_floor_test": 0.3888888888888889,
+ "track_centers": [
+  0.8,
+  -0.8,
+  0.8,
+  -0.8,
+  0.8,
+  -0.8,
+  0.8,
+  -0.8,
+  0.8,
+  -0.8
+ ],
+ "track_pushes": [
+  -0.023029225960284037,
+  0.046028836126486256,
+  -0.020348654830479422,
+  -0.028356158009806686,
+  -0.08370163712904907,
+  -0.01919717526790833,
+  0.10007256428876886,
+  0.038173201571334255,
+  0.09331911710006997,
+  0.02240124548985822
+ ],
+ "searches": [
+  {
+   "seed": 12345,
+   "final_train_accuracy": 1.0,
+   "final_test_accuracy": 1.0,
+   "best_train_accuracy": 1.0,
+   "best_train_test_accuracy": 1.0,
+   "threshold_t1": -0.225702,
+   "threshold_t2": 0.316105,
+   "base_weights": "0.055872,0.091967,-0.072869,0.040467,0.014746",
+   "control_final_test_accuracy": 0.9815,
+   "control_best_train_test_accuracy": 0.963
+  },
+  {
+   "seed": 12346,
+   "final_train_accuracy": 1.0,
+   "final_test_accuracy": 0.8148,
+   "best_train_accuracy": 1.0,
+   "best_train_test_accuracy": 0.8148,
+   "threshold_t1": -0.020097,
+   "threshold_t2": 0.24201,
+   "base_weights": "0.129144,0.141196,0.143091,0.101593,0.261431",
+   "control_final_test_accuracy": 0.9815,
+   "control_best_train_test_accuracy": 0.963
+  },
+  {
+   "seed": 12347,
+   "final_train_accuracy": 1.0,
+   "final_test_accuracy": 0.963,
+   "best_train_accuracy": 1.0,
+   "best_train_test_accuracy": 0.963,
+   "threshold_t1": -0.17613,
+   "threshold_t2": 0.286629,
+   "base_weights": "0.047054,0.090820,-0.026428,0.041616,-0.039773",
+   "control_final_test_accuracy": 0.9815,
+   "control_best_train_test_accuracy": 0.963
+  },
+  {
+   "seed": 12348,
+   "final_train_accuracy": 1.0,
+   "final_test_accuracy": 0.8333,
+   "best_train_accuracy": 1.0,
+   "best_train_test_accuracy": 0.8704,
+   "threshold_t1": -0.210241,
+   "threshold_t2": 0.364393,
+   "base_weights": "-0.030447,0.104566,-0.086706,-0.069221,-0.061237",
+   "control_final_test_accuracy": 0.9815,
+   "control_best_train_test_accuracy": 0.9815
+  },
+  {
+   "seed": 12349,
+   "final_train_accuracy": 1.0,
+   "final_test_accuracy": 0.8148,
+   "best_train_accuracy": 1.0,
+   "best_train_test_accuracy": 0.8148,
+   "threshold_t1": -0.05503,
+   "threshold_t2": 0.32052,
+   "base_weights": "0.119819,0.111643,0.123620,0.117999,0.118774",
+   "control_final_test_accuracy": 0.9815,
+   "control_best_train_test_accuracy": 0.963
+  }
+ ],
+ "mean_final_test_accuracy": 0.8851800000000001,
+ "mean_best_train_test_accuracy": 0.8926000000000001,
+ "mean_control_final_test_accuracy": 0.9815000000000002,
+ "best_final_test_accuracy": 1.0
+}

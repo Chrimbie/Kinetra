@@ -37,3 +37,12 @@ Results from the first round of follow-up experiments now live under `experiment
 - #6 (online adaptation vs frozen transfer): OPEN — the stress test's mid-run change used frozen weights; true online adaptation is untested.
 
 New direction, not an answer to any follow-up above: `experiments/pass-through/` verifies that a problem can be passed through with contact recorded (parts of a problem as answers, fit rules enforced), and `experiments/learned-aiming/` shows aiming at a part learned rather than hand-set.
+
+## Status update (2026-11-02)
+
+New direction, not an answer to any follow-up above: `experiments/input-conditioned/` tests Christopher's framing that every model is the ball, the input changes the parameters of the trajectory on the forward pass, and the loss changes the trajectory parameters on the backward pass. The track is fixed; the input enters only through the ball's parameters; learning is real backprop through the unrolled physics.
+
+- Wine (`experiments/input-conditioned/wine/`): PASS — mean test 0.885, best seed 1.000, against the same bar the frozen-ball versions failed (v1 0.422, v2 0.526). Caveat, stated in the experiment README: the linear map alone scored 0.982, so on Wine the ball's dynamics added nothing; Wine is linearly easy.
+- XOR (`experiments/input-conditioned/xor/`): PASS — ball 4/4 on all 5 seeds, control mean 0.550, max 0.750 (exactly the linear ceiling). Where the map provably fails, the ball supplies the nonlinearity. Caveat: three seeds solve with thin margins (as small as 0.002 past the threshold), because margin loss stops pushing once a sample is correct.
+- Combined reading: the ball is not a redundant readout. It contributes exactly where linearity fails.
+- Still open: track training (the second half of the framing, where the gate layout itself learns); a margin-maximizing loss to test XOR robustness; #6 (online adaptation) remains open.
