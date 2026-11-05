@@ -1,5 +1,12 @@
 # Kinetra
 
+**Latest experiment: [dataset as one continuous course](experiments/dataset-course/README.md).**
+Each Wine example supplies 13 input forces followed by a three-zone obstacle;
+the ball keeps its motion between examples and answers only score the result.
+The first test reached 38.0% correct hits by settling on the majority class and
+won no full unseen courses. Code, controls, gradients, trajectories and all
+results are published. The older experiments below retain their original setups.
+
 **Kinetra** is an exploratory computational experiment for learning and transferring movement corrections across obstacle tracks.
 
 ## Concept
@@ -90,3 +97,4 @@ python Kinetra_habit_replications.py
 ```
 
 Selected published data: [alignment summary](results/kinetra_alignment_summary.csv), [initial-state diagnostics](results/kinetra_alignment_diagnostics.csv), [habit-condition comparisons](results/Kinetra_habit_summary.csv), [learning curve](results/Kinetra_habit_learning_curve.csv), [replication results](results/Kinetra_habit_replications.csv), [paired-bootstrap intervals](results/Kinetra_habit_robustness.csv). The scripts can regenerate larger per-trial CSVs locally; those are not checked in.
+

@@ -46,3 +46,26 @@ New direction, not an answer to any follow-up above: `experiments/input-conditio
 - XOR (`experiments/input-conditioned/xor/`): PASS — ball 4/4 on all 5 seeds, control mean 0.550, max 0.750 (exactly the linear ceiling). Where the map provably fails, the ball supplies the nonlinearity. Caveat: three seeds solve with thin margins (as small as 0.002 past the threshold), because margin loss stops pushing once a sample is correct.
 - Combined reading: the ball is not a redundant readout. It contributes exactly where linearity fails.
 - Still open: track training (the second half of the framing, where the gate layout itself learns); a margin-maximizing loss to test XOR robustness; #6 (online adaptation) remains open.
+
+## Dataset-as-course test (2026-11-04, America/Chicago)
+
+Christopher clarified the goal as hitting every problem/obstacle in one
+continuous course. `experiments/dataset-course/` implements the proposed fixed
+input-force encoding, three answer pads per obstacle, continuous motion state,
+and labels used only for scoring/training loss. It compares four learned launch
+settings against those settings plus six shared motion parameters.
+
+On a stratified 106/36/36 Wine split, five seeds and 20 test-course orders per
+seed, launch-only validation selected the initial model (14.1% test correct
+hits). Shared-motion training reached 38.0% correct hits and 38.9% nearest-class
+accuracy, collapsing to the training-majority class. Logistic regression on the
+same split scored 94.4%. Neither ball mode won any full test course. All 13 tests
+passed, including label isolation, state carry and finite-difference gradients.
+
+The encoding now exists; its first learning result is negative. Test orders
+reuse the same 36 rows and are not independent datasets. Launch-state influence
+quickly decays in these damped dynamics. Next investigations should use only
+training/validation evidence to address state retention and the middle-pad
+loss compromise, then evaluate on newly reserved data. Full protocol, limitations,
+parameters, raw results and a trajectory figure are in the experiment directory.
+
