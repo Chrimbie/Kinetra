@@ -39,20 +39,40 @@ PARAMETER_NAMES = [
 ]
 
 
-def encode_inputs(inputs, mean, scale):
+class CourseConfig:
+    """Only dataset dimensions and pad geometry; no trainable parameters."""
+
+    def __init__(self, feature_count=13, class_count=3):
+        if not isinstance(feature_count, int) or feature_count < 1:
+            raise ValueError("feature_count must be a positive integer")
+        if not isinstance(class_count, int) or class_count < 2:
+            raise ValueError("class_count must be at least two")
+        self.feature_count = feature_count
+        self.class_count = class_count
+        self.centers = np.linspace(-1.0, 1.0, class_count)
+        self.centers.flags.writeable = False
+        spacing = 2.0 / (class_count - 1)
+        self.hit_radius = 0.32 * spacing
+        self.contact_width = 0.30 * spacing
+
+
+WINE_CONFIG = CourseConfig()
+
+
+def encode_inputs(inputs, mean, scale, config=WINE_CONFIG):
     """Each feature becomes one bounded sideways force; labels are absent.
 
-    Feature order is the original Wine column order. The fixed tanh transform
+    Feature order is the original dataset column order. The fixed tanh transform
     is a numerical range bound, not a learned feature extractor. Scaling
     statistics must come from training inputs only.
     """
     inputs = np.asarray(inputs, dtype=np.float64)
     mean = np.asarray(mean, dtype=np.float64)
     scale = np.asarray(scale, dtype=np.float64)
-    if inputs.shape[-1] != FEATURE_COUNT:
-        raise ValueError("This first encoder expects Wine's 13 features.")
-    if mean.shape != (FEATURE_COUNT,) or scale.shape != (FEATURE_COUNT,):
-        raise ValueError("Expected 13 training means and scales.")
+    if inputs.ndim < 1 or inputs.shape[-1] != config.feature_count:
+        raise ValueError(f"Expected {config.feature_count} input features.")
+    if mean.shape != (config.feature_count,) or scale.shape != (config.feature_count,):
+        raise ValueError(f"Expected {config.feature_count} training means and scales.")
     if not np.isfinite(inputs).all() or not np.isfinite(mean).all():
         raise ValueError("Inputs and means must be finite.")
     if not np.isfinite(scale).all() or np.any(scale <= 0):
@@ -91,24 +111,24 @@ def initial_parameters(seed):
     return raw
 
 
-def contact(position):
-    """Smooth lateral collision surrogate for ALL three fixed target pads.
+def contact(position, config=WINE_CONFIG):
+    """Smooth lateral collision surrogate for ALL fixed target pads.
 
     The pad layout and impulse are independent of the sample's true class.
     The hard success score uses HIT_RADIUS; this smooth impulse is only the
     differentiable approximation to physical contact, with Gaussian tails.
     """
-    delta = position[:, None] - CENTERS[None, :]
-    bump = np.exp(-0.5 * (delta / CONTACT_WIDTH) ** 2)
+    delta = position[:, None] - config.centers[None, :]
+    bump = np.exp(-0.5 * (delta / config.contact_width) ** 2)
     impulse = 0.04 * np.sum(delta * bump, axis=1)
-    derivative = 0.04 * np.sum(bump * (1 - (delta / CONTACT_WIDTH) ** 2), axis=1)
+    derivative = 0.04 * np.sum(bump * (1 - (delta / config.contact_width) ** 2), axis=1)
     return impulse, derivative
 
 
-def rollout(raw, course, initial_state=None):
+def rollout(raw, course, initial_state=None, config=WINE_CONFIG):
     """Roll through every station without resets. No label argument exists.
 
-    course: [balls, stations, 13] forces, or [stations, 13].
+    course: [balls, stations, features] forces, or [stations, features].
     raw: one shared parameter vector per ball, held fixed for the whole run.
     Returns endpoint positions and ALL states, including the initial state.
     State order: lateral position, velocity, angle, spin. Each batch member
@@ -117,8 +137,8 @@ def rollout(raw, course, initial_state=None):
     course = np.asarray(course, dtype=np.float64)
     if course.ndim == 2:
         course = course[None, :, :]
-    if course.ndim != 3 or course.shape[-1] != FEATURE_COUNT or course.shape[1] == 0:
-        raise ValueError("Expected a nonempty course of 13-feature stations.")
+    if course.ndim != 3 or course.shape[-1] != config.feature_count or course.shape[1] == 0:
+        raise ValueError(f"Expected a nonempty course of {config.feature_count}-feature stations.")
     if not np.isfinite(course).all():
         raise ValueError("Course forces must be finite.")
     b, n, f = course.shape
@@ -146,7 +166,7 @@ def rollout(raw, course, initial_state=None):
         vn = drag * v - spring * p + 0.18 * np.sin(an) + 0.10 * sn + force_gain * u + bias
         pn = 2.0 * np.tanh((p + 0.35 * vn) / 2.0)
         if (step + 1) % f == 0:
-            vn = vn + contact(pn)[0]
+            vn = vn + contact(pn, config)[0]
         states[step + 1, :, 0] = pn
         states[step + 1, :, 1] = vn
         states[step + 1, :, 2] = an
@@ -155,18 +175,18 @@ def rollout(raw, course, initial_state=None):
     return positions, states
 
 
-def targets(labels, shape):
+def targets(labels, shape, config=WINE_CONFIG):
     labels = np.asarray(labels)
     if labels.ndim == 1 and shape[0] == 1:
         labels = labels[None, :]
     if labels.shape != shape or not np.issubdtype(labels.dtype, np.integer):
         raise ValueError("Expected one integer class per course station.")
-    if np.any((labels < 0) | (labels >= len(CENTERS))):
-        raise ValueError("Wine classes must be 0, 1, or 2.")
-    return CENTERS[labels]
+    if np.any((labels < 0) | (labels >= config.class_count)):
+        raise ValueError(f"Class IDs must be in 0..{config.class_count - 1}.")
+    return config.centers[labels]
 
 
-def loss_and_gradient(raw, course, labels):
+def loss_and_gradient(raw, course, labels, config=WINE_CONFIG):
     """Exact reverse-mode backprop AFTER the entire continuous forward run.
 
     Loss is mean squared distance from the correct pad center. Every step's
@@ -176,13 +196,13 @@ def loss_and_gradient(raw, course, labels):
     course = np.asarray(course, dtype=np.float64)
     if course.ndim == 2:
         course = course[None, :, :]
-    positions, states = rollout(raw, course)
+    positions, states = rollout(raw, course, config=config)
     b, n, f = course.shape
     params, derivative = physical_parameters(raw)
     if len(params) == 1 and b != 1:
         params = np.repeat(params, b, axis=0)
         derivative = np.repeat(derivative, b, axis=0)
-    error = positions - targets(labels, positions.shape)
+    error = positions - targets(labels, positions.shape, config)
     loss = np.mean(error ** 2, axis=1)
     endpoint_gradient = 2 * error / n
     adjoint = np.zeros((b, 4))
@@ -193,7 +213,7 @@ def loss_and_gradient(raw, course, labels):
         pn, _, an, _ = states[step + 1].T
         gp, gv, ga, gs = adjoint.T
         if (step + 1) % f == 0:
-            gp = gp + endpoint_gradient[:, step // f] + gv * contact(pn)[1]
+            gp = gp + endpoint_gradient[:, step // f] + gv * contact(pn, config)[1]
         unconstrained_position_grad = gp * (1 - (pn / 2) ** 2)
         gvn = gv + 0.35 * unconstrained_position_grad
         gan = ga + 0.18 * np.cos(an) * gvn
@@ -214,13 +234,13 @@ def loss_and_gradient(raw, course, labels):
     return loss, gradient
 
 
-def score_positions(positions, labels):
+def score_positions(positions, labels, config=WINE_CONFIG):
     positions = np.atleast_2d(positions)
-    correct_centers = targets(labels, positions.shape)
-    predicted = np.argmin(abs(positions[:, :, None] - CENTERS), axis=2)
-    true = np.argmin(abs(correct_centers[:, :, None] - CENTERS), axis=2)
-    hits = abs(positions - correct_centers) <= HIT_RADIUS
-    any_contact = np.min(abs(positions[:, :, None] - CENTERS), axis=2) <= HIT_RADIUS
+    correct_centers = targets(labels, positions.shape, config)
+    predicted = np.argmin(abs(positions[:, :, None] - config.centers), axis=2)
+    true = np.argmin(abs(correct_centers[:, :, None] - config.centers), axis=2)
+    hits = abs(positions - correct_centers) <= config.hit_radius
+    any_contact = np.min(abs(positions[:, :, None] - config.centers), axis=2) <= config.hit_radius
     return {
         "correct_hit_rate": hits.mean(axis=1),
         "class_accuracy": (predicted == true).mean(axis=1),
@@ -254,7 +274,7 @@ def ordered_courses(course, labels, seed, count):
     return course[order], labels[order], order
 
 
-def train_models(train_course, train_labels, val_course, val_labels, epochs=250, orders=2):
+def train_models(train_course, train_labels, val_course, val_labels, epochs=250, orders=2, config=WINE_CONFIG):
     """Fit five independent seeds in each of two modes with vectorized NumPy.
 
     Independent seeds share no gradients or parameters. Validation chooses
@@ -279,8 +299,8 @@ def train_models(train_course, train_labels, val_course, val_labels, epochs=250,
     start = time.monotonic()
     for epoch in range(epochs + 1):
         if epoch % 10 == 0 or epoch == epochs:
-            positions, _ = rollout(np.repeat(raw, 4, axis=0), val_batch)
-            val_score = score_positions(positions, val_targets)
+            positions, _ = rollout(np.repeat(raw, 4, axis=0), val_batch, config=config)
+            val_score = score_positions(positions, val_targets, config)
             hit = val_score["correct_hit_rate"].reshape(len(raw), 4).mean(axis=1)
             mse = val_score["mse"].reshape(len(raw), 4).mean(axis=1)
             improve = (hit > best_hit) | ((hit == best_hit) & (mse < best_mse))
@@ -291,7 +311,7 @@ def train_models(train_course, train_labels, val_course, val_labels, epochs=250,
             for i, (mode, seed) in enumerate(specs):
                 history.append({"mode": mode, "seed": seed, "epoch": epoch,
                                 "validation_correct_hit_rate": float(hit[i]), "validation_mse": float(mse[i])})
-            if epoch % 50 == 0 or epoch == epochs:
+            if epoch % 10 == 0 or epoch == epochs:
                 print(f"epoch {epoch:3d}/{epochs} | validation hits "
                       f"launch {hit[:5].mean():.3f}, shared {hit[5:].mean():.3f} | "
                       f"elapsed {time.monotonic() - start:.1f}s", flush=True)
@@ -301,7 +321,7 @@ def train_models(train_course, train_labels, val_course, val_labels, epochs=250,
         x, y, _ = ordered_courses(train_course, train_labels, 10000 + epoch, orders)
         batch_x = np.tile(x, (len(raw), 1, 1))
         batch_y = np.tile(y, (len(raw), 1))
-        _, grads = loss_and_gradient(np.repeat(raw, orders, axis=0), batch_x, batch_y)
+        _, grads = loss_and_gradient(np.repeat(raw, orders, axis=0), batch_x, batch_y, config)
         grad = grads.reshape(len(raw), orders, 10).mean(axis=1) * mask
         norm = np.linalg.norm(grad, axis=1, keepdims=True)
         grad *= np.minimum(1, 2.0 / np.maximum(norm, 1e-12))
@@ -312,10 +332,10 @@ def train_models(train_course, train_labels, val_course, val_labels, epochs=250,
     return specs, initial_raw, best_raw, best_epoch, history
 
 
-def summarize_orders(raw, course, labels, seed=2901, count=20):
+def summarize_orders(raw, course, labels, seed=2901, count=20, config=WINE_CONFIG):
     x, y, order = ordered_courses(course, labels, seed, count)
-    positions, _ = rollout(raw, x)
-    scores = score_positions(positions, y)
+    positions, _ = rollout(raw, x, config=config)
+    scores = score_positions(positions, y, config)
     stats = {}
     for metric, values in scores.items():
         stats[metric] = float(np.mean(values))
@@ -323,7 +343,7 @@ def summarize_orders(raw, course, labels, seed=2901, count=20):
         stats[metric + "_max"] = float(np.max(values))
     # Pair every row back to its identity; disagreement across preceding
     # course histories is order sensitivity, not independent test evidence.
-    pred = np.argmin(abs(positions[:, :, None] - CENTERS), axis=2)
+    pred = np.argmin(abs(positions[:, :, None] - config.centers), axis=2)
     restored = np.empty_like(pred)
     for j in range(count):
         restored[j, order[j]] = pred[j]
@@ -339,7 +359,7 @@ def write_csv(path, rows):
         writer.writerows(rows)
 
 
-def save_launch_sensitivity(output, raw, course):
+def save_launch_sensitivity(output, raw, course, config=WINE_CONFIG):
     """Frozen-model diagnosis: perturb each raw launch setting by +/-1.
 
     Measure how strongly the starting configuration still affects lateral
@@ -350,7 +370,7 @@ def save_launch_sensitivity(output, raw, course):
         plus, minus = raw.copy(), raw.copy()
         plus[parameter] += 1
         minus[parameter] -= 1
-        effects.append(abs(rollout(plus, course)[0][0] - rollout(minus, course)[0][0]))
+        effects.append(abs(rollout(plus, course, config=config)[0][0] - rollout(minus, course, config=config)[0][0]))
     rows = [{"station": i + 1, **{PARAMETER_NAMES[j] + "_position_difference": float(effects[j][i])
                                   for j in range(4)},
              "max_position_difference": float(max(e[i] for e in effects))}
@@ -358,11 +378,12 @@ def save_launch_sensitivity(output, raw, course):
     write_csv(output / "launch_sensitivity.csv", rows)
 
 
-def save_preview(output, raw, split, selected_mode, selected_seed):
+def save_preview(output, raw, split, selected_mode, selected_seed, config=WINE_CONFIG, dataset_name="Wine"):
     """Export the first test course's entire trajectory and a scoring view."""
     x, y, order = ordered_courses(split["course"], split["labels"], 2901, 1)
-    positions, states = rollout(raw, x)
-    trace = [{"step": step, "station": (step - 1) // FEATURE_COUNT if step else -1,
+    positions, states = rollout(raw, x, config=config)
+    feature_count = config.feature_count
+    trace = [{"step": step, "station": (step - 1) // feature_count if step else -1,
               "position": float(state[0]), "velocity": float(state[1]),
               "angle": float(state[2]), "spin": float(state[3])}
              for step, state in enumerate(states[:, 0])]
@@ -370,10 +391,11 @@ def save_preview(output, raw, split, selected_mode, selected_seed):
     endpoints = []
     for station, p in enumerate(positions[0]):
         label = int(y[0, station])
-        prediction = int(np.argmin(abs(p - CENTERS)))
-        endpoints.append({"station": station, "wine_row": int(split["indices"][order[0, station]]),
+        prediction = int(np.argmin(abs(p - config.centers)))
+        row_key = "wine_row" if dataset_name == "Wine" else "dataset_row"
+        endpoints.append({"station": station, row_key: int(split["indices"][order[0, station]]),
                           "true_class": label, "nearest_class": prediction,
-                          "position": float(p), "correct_hit": bool(abs(p - CENTERS[label]) <= HIT_RADIUS)})
+                          "position": float(p), "correct_hit": bool(abs(p - config.centers[label]) <= config.hit_radius)})
     write_csv(output / "obstacle_hits.csv", endpoints)
     try:
         import matplotlib
@@ -384,27 +406,29 @@ def save_preview(output, raw, split, selected_mode, selected_seed):
         print("matplotlib unavailable: CSV trace saved; figure skipped.", flush=True)
         return
     plt.rcParams["svg.hashsalt"] = "kinetra-dataset-course"
-    count = 12
+    count = min(12, len(split["course"]))
     fig, ax = plt.subplots(figsize=(13, 5))
     for station in range(count):
-        time_step = (station + 1) * FEATURE_COUNT
-        for cls, center in enumerate(CENTERS):
-            ax.add_patch(Rectangle((time_step - 0.8, center - HIT_RADIUS), 1.6, 2 * HIT_RADIUS,
+        time_step = (station + 1) * feature_count
+        pad_width = 1.6 * feature_count / 13
+        for cls, center in enumerate(config.centers):
+            ax.add_patch(Rectangle((time_step - pad_width / 2, center - config.hit_radius), pad_width, 2 * config.hit_radius,
                                    facecolor="#FFD43B" if cls == y[0, station] else "white",
                                    edgecolor="black", linewidth=1.2, zorder=2))
         p = positions[0, station]
-        hit = abs(p - CENTERS[y[0, station]]) <= HIT_RADIUS
+        hit = abs(p - config.centers[y[0, station]]) <= config.hit_radius
         ax.plot(time_step, p, "o" if hit else "x", color="black" if hit else "#B51F24", markersize=7, zorder=4)
-    ax.plot(np.arange(count * FEATURE_COUNT + 1), states[:count * FEATURE_COUNT + 1, 0, 0],
+    ax.plot(np.arange(count * feature_count + 1), states[:count * feature_count + 1, 0, 0],
             color="#1565C0", linewidth=2, label="Continuous ball trajectory", zorder=3)
-    ax.set(title=f"Wine course: first 12 unseen obstacles | {selected_mode}, seed {selected_seed}",
-           xlabel="Obstacle number (13 input-force steps between obstacles)", ylabel="Lateral position / answer zone",
-           ylim=(-2.0, 2.0), xlim=(0, count * FEATURE_COUNT + 3))
-    ax.set_yticks(CENTERS, ["Class 0", "Class 1", "Class 2"])
-    ax.set_xticks(np.arange(1, count + 1) * FEATURE_COUNT, [str(i + 1) for i in range(count)])
+    ax.set(title=f"{dataset_name} course: first {count} unseen obstacles | {selected_mode}, seed {selected_seed}",
+           xlabel=f"Obstacle number ({feature_count} input-force steps between obstacles)", ylabel="Lateral position / answer zone",
+           ylim=(-2.0, 2.0), xlim=(0, count * feature_count + 3))
+    ax.set_yticks(config.centers, [f"Class {i}" for i in range(config.class_count)])
+    ax.set_xticks(np.arange(1, count + 1) * feature_count, [str(i + 1) for i in range(count)])
     ax.grid(axis="y", alpha=0.2)
     ax.legend(loc="upper left")
-    fig.text(0.5, 0.015, "All three pads are always present. Yellow = correct answer shown only for scoring. "
+    pad_count = "three" if config.class_count == 3 else str(config.class_count)
+    fig.text(0.5, 0.015, f"All {pad_count} pads are always present. Yellow = correct answer shown only for scoring. "
              "Black dot = correct hit; red x = miss. No state resets between obstacles.", ha="center", fontsize=9)
     fig.tight_layout(rect=(0, 0.06, 1, 1))
     svg_path = output / "course_preview.svg"

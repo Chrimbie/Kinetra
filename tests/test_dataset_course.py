@@ -19,8 +19,8 @@ class DatasetCourseTests(unittest.TestCase):
         self.labels = np.array([0, 2, 1, 2, 0, 1])
 
     def test_no_labels_in_forward_interfaces(self):
-        self.assertEqual(list(inspect.signature(k.encode_inputs).parameters), ["inputs", "mean", "scale"])
-        self.assertEqual(list(inspect.signature(k.rollout).parameters), ["raw", "course", "initial_state"])
+        self.assertEqual(list(inspect.signature(k.encode_inputs).parameters), ["inputs", "mean", "scale", "config"])
+        self.assertEqual(list(inspect.signature(k.rollout).parameters), ["raw", "course", "initial_state", "config"])
         before = k.rollout(self.raw, self.course)[1]
         k.loss_and_gradient(self.raw, self.course, self.labels)
         k.loss_and_gradient(self.raw, self.course, 2 - self.labels)
